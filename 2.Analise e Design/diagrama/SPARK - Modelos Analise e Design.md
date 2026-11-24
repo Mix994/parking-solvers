@@ -1,4 +1,4 @@
-# Modelos de Análise e Design — SmartPark (Room v3)
+# Modelos de Análise e Design — SmartPark (Room v4)
 
 ## 1. Modelo Entidade-Relacionamento (Banco Local Room)
 
@@ -7,6 +7,13 @@ erDiagram
     SERVIDOR ||--o| USUARIO : "possui conta (opcional)"
     SERVIDOR ||--o{ VEICULO : "possui"
     VEICULO ||--o{ REGISTRO_MOVIMENTACAO : "registra"
+
+    CONFIGURACAO_ESTACIONAMENTO {
+        int id PK "1 (registro unico)"
+        int capacidade_total "padrao 60"
+        int capacidade_exclusivas "padrao 10"
+        int capacidade_carregamento_eletrico "padrao 2 (expansivel)"
+    }
 
     USUARIO {
         long id PK

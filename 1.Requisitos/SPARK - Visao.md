@@ -22,7 +22,7 @@
 | **SPARK-US07** | Manter Contas e Níveis de Acesso | Sim | Não | Não |
 
 ## 3. Necessidades do Cliente e Suposições Registradas
-- **S01 (Capacidade padrão):** 60 vagas totais, sendo 10 vagas exclusivas (PCD, Idoso e Viaturas Oficiais).
+- **S01 (Capacidade e expansão de vagas):** padrão inicial de **60 vagas totais**, **10 vagas exclusivas** (PCD, Idoso e Viaturas Oficiais) e **2 vagas para carregamento de veículos elétricos**, armazenadas na tabela `configuracao_estacionamento` para que a Administração possa expandir facilmente para mais vagas de carregamento elétrico sem alterar código.
 - **S02 (Turnos automáticos):** Manhã (`06h00–11h59`), Tarde (`12h00–17h59`), Noite (`18h00–05h59`).
 - **S03 (Placas):** aceita `AAA-1234` e Mercosul `ABC1D23`, armazenadas normalizadas (7 caracteres maiúsculos sem hífen).
 - **S04 (Segurança de login):** senhas gravadas com hash SHA-256 + salt aleatório; 5 falhas consecutivas bloqueiam o login por 15 minutos (`LoginAttemptService`).
