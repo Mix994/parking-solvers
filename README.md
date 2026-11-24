@@ -70,9 +70,9 @@ Organizado segundo o processo ágil **SpinOff** e o padrão do repositório de r
 | :--- | :--- | :---: | :--- |
 | **Administração (`ADMIN`)** | `admin@campus.edu.br` | `admin123` | Painel (com expansão de vagas), Portaria, Visitantes, Veículos e Gestão |
 | **Portaria (`PORTARIA`)** | `portaria@campus.edu.br` | `portaria123` | Portaria, Visitantes, Veículos e Painel |
-| **Servidor (`SERVIDOR`)** | `ana.souza@campus.edu.br` ou `BP102401` | `123456` | Meus Veículos + Meus Dados |
-| **Servidor (`SERVIDOR`)** | `carlos.lima@campus.edu.br` ou `BP102402` | `123456` | Meus Veículos + Meus Dados |
-| **Servidor (`SERVIDOR`)** | `fernanda.oliveira@campus.edu.br` ou `BP102403` | `123456` | Meus Veículos + Meus Dados |
+| **Servidor (`SERVIDOR`)** | `ana.souza@campus.edu.br` ou `BP102401` | `123456` | Vagas disponíveis (com filtro PCD/Elétrico), Meus Veículos e Meus Dados |
+| **Servidor (`SERVIDOR`)** | `carlos.lima@campus.edu.br` ou `BP102402` | `123456` | Vagas disponíveis (com filtro PCD/Elétrico), Meus Veículos e Meus Dados |
+| **Servidor (`SERVIDOR`)** | `fernanda.oliveira@campus.edu.br` ou `BP102403` | `123456` | Vagas disponíveis (com filtro PCD/Elétrico), Meus Veículos e Meus Dados |
 
 ---
 
