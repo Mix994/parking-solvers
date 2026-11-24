@@ -24,7 +24,7 @@ Organizado segundo o processo ágil **SpinOff** e o padrão de engenharia de sof
 ├── 2.Analise e Design/
 │   ├── adr/                        # Architecture Decision Records (ADR-0001 a ADR-0003)
 │   └── diagrama/                   # Modelos de Análise, ER do Room v3 e Sequência
-├── 3.Implementacao/                # Projeto Android Studio (Kotlin, Jetpack Compose, Room v3, JUnit)
+├── 3.Implementacao/                # Submódulo Git -> parking-solvers-implementacao (Kotlin, Compose, Room v3, JUnit)
 ├── 4.Teste/
 │   ├── Massa de Testes/            # Scripts SQLite (Limpeza, Massa de Testes e Conferência)
 │   └── SPARK - Roteiro de Testes.md
@@ -54,8 +54,15 @@ Organizado segundo o processo ágil **SpinOff** e o padrão de engenharia de sof
 
 ---
 
-## Como Abrir, Compilar e Testar
+## Como Clonar, Abrir, Compilar e Testar
 
+Como `3.Implementacao` é um submódulo Git, clone usando `--recurse-submodules`:
+
+```powershell
+git clone --recurse-submodules https://github.com/Mix994/parking-solvers.git
+```
+
+Depois:
 1. Abra a pasta `3.Implementacao/` no **Android Studio**.
 2. Ou execute via terminal dentro de `3.Implementacao/`:
 
