@@ -29,7 +29,7 @@ O instalador Android (`.apk`) pronto para testar no celular ou no emulador fica 
 
 ## Estrutura do Repositório
 
-Organizado segundo o processo ágil **SpinOff** e o padrão do repositório de referência (`C4103M/carToon`):
+Organizado segundo o processo ágil **SpinOff**:
 
 ```text
 .
