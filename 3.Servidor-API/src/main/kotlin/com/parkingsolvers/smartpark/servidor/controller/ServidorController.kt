@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.ResponseStatus
@@ -30,6 +31,11 @@ class ServidorController(private val service: ServidorService) {
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasRole('ADMIN')")
     fun cadastrar(@RequestBody request: ServidorRequest): ServidorResponse = service.cadastrar(request)
+
+    @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    fun atualizar(@PathVariable id: Long, @RequestBody request: ServidorRequest): ServidorResponse =
+        service.atualizar(id, request)
 
     @PatchMapping("/{id}/ativo")
     @PreAuthorize("hasRole('ADMIN')")

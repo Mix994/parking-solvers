@@ -13,6 +13,7 @@ import com.parkingsolvers.smartpark.movimentacao.dto.MovimentacaoResponse
 import com.parkingsolvers.smartpark.movimentacao.model.TipoVaga
 import com.parkingsolvers.smartpark.servidor.dto.ServidorRequest
 import com.parkingsolvers.smartpark.servidor.dto.ServidorResponse
+import com.parkingsolvers.smartpark.usuario.dto.AtualizarUsuarioAdminRequest
 import com.parkingsolvers.smartpark.usuario.dto.AtualizarUsuarioRequest
 import com.parkingsolvers.smartpark.usuario.dto.UsuarioRequest
 import com.parkingsolvers.smartpark.usuario.dto.UsuarioResponse
@@ -110,7 +111,7 @@ class ApiIntegracaoTest {
         assertEquals(HttpStatus.OK, cfgAtualizada.statusCode)
         assertEquals(50, cfgAtualizada.body?.capacidadeTotal)
 
-        // 4. Criar servidor
+        // 4. Criar e editar servidor (PUT /servidores/{id})
         val servidorResp = rest.exchange(
             "/servidores",
             HttpMethod.POST,
@@ -121,7 +122,17 @@ class ApiIntegracaoTest {
         val servidor = requireNotNull(servidorResp.body)
         assertEquals("SP3010", servidor.prontuario)
 
-        // 5. Criar usuários PORTARIA e SERVIDOR
+        val servidorEditado = rest.exchange(
+            "/servidores/${servidor.id}",
+            HttpMethod.PUT,
+            authEntity(adminToken, ServidorRequest("Ana Paula Costa", "sp3010", "ana.costa@ifsp.edu.br", "(11) 98888-9999", "Redes")),
+            ServidorResponse::class.java
+        )
+        assertEquals(HttpStatus.OK, servidorEditado.statusCode)
+        assertEquals("ana.costa@ifsp.edu.br", servidorEditado.body?.email)
+        assertEquals("Redes", servidorEditado.body?.setor)
+
+        // 5. Criar usuários PORTARIA e SERVIDOR + Admin editar email/senha de porteiro (PUT /usuarios/{id})
         val portariaUser = rest.exchange(
             "/usuarios",
             HttpMethod.POST,
@@ -129,6 +140,25 @@ class ApiIntegracaoTest {
             UsuarioResponse::class.java
         )
         assertEquals(HttpStatus.CREATED, portariaUser.statusCode)
+        val porteiroId = requireNotNull(portariaUser.body?.id)
+
+        val porteiroEditado = rest.exchange(
+            "/usuarios/$porteiroId",
+            HttpMethod.PUT,
+            authEntity(
+                adminToken,
+                AtualizarUsuarioAdminRequest(
+                    nome = "Carlos Porteiro",
+                    login = "carlos.portaria@ifsp.edu.br",
+                    novaSenha = "novaSenha456",
+                    confirmacaoNovaSenha = "novaSenha456",
+                    perfil = PerfilUsuario.PORTARIA
+                )
+            ),
+            UsuarioResponse::class.java
+        )
+        assertEquals(HttpStatus.OK, porteiroEditado.statusCode)
+        assertEquals("carlos.portaria@ifsp.edu.br", porteiroEditado.body?.login)
 
         val servidorUser = rest.exchange(
             "/usuarios",
@@ -166,8 +196,18 @@ class ApiIntegracaoTest {
         val veiculo = requireNotNull(veiculoResp.body)
         assertEquals("ABC1D23", veiculo.placa)
 
-        // Portaria consulta placa
-        val portariaToken = login("portaria1", "senha123").accessToken
+        // Portaria entra com novo email/senha alterados pelo admin e faz busca parcial + consulta de placa
+        val portariaToken = login("carlos.portaria@ifsp.edu.br", "novaSenha456").accessToken
+        val buscaParcial = rest.exchange(
+            "/veiculos/buscar?termo=1d2",
+            HttpMethod.GET,
+            authEntity<Unit>(portariaToken),
+            Array<VeiculoResponse>::class.java
+        )
+        assertEquals(HttpStatus.OK, buscaParcial.statusCode)
+        assertEquals(1, buscaParcial.body?.size)
+        assertEquals("ABC1D23", buscaParcial.body?.first()?.placa)
+
         val consultaResp = rest.exchange(
             "/veiculos/placa/abc1d23",
             HttpMethod.GET,

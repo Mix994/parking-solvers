@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
 
@@ -28,6 +29,11 @@ class VeiculoController(private val service: VeiculoService) {
     @GetMapping("/servidor/{servidorId}")
     @PreAuthorize("hasAnyRole('ADMIN','PORTARIA') or (principal.servidorId != null and principal.servidorId == #servidorId)")
     fun listarPorServidor(@PathVariable servidorId: Long): List<VeiculoResponse> = service.listarPorServidor(servidorId)
+
+    /** Busca parcial por trecho da placa para sugestões em tempo real na portaria. */
+    @GetMapping("/buscar")
+    @PreAuthorize("hasAnyRole('ADMIN','PORTARIA')")
+    fun buscarPorTrecho(@RequestParam termo: String): List<VeiculoResponse> = service.buscarPorTrechoPlaca(termo)
 
     /** Consulta de autorização pela portaria. */
     @GetMapping("/placa/{placa}")

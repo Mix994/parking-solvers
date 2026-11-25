@@ -91,6 +91,17 @@ class VeiculoService(
     }
 
     @Transactional(readOnly = true)
+    fun buscarPorTrechoPlaca(termoEntrada: String): List<VeiculoResponse> {
+        val termo = termoEntrada.trim().uppercase().replace("-", "")
+        if (termo.length < 2) return emptyList()
+        val encontrados = veiculoRepository.findTop10ByPlacaContainingIgnoreCaseOrderByPlacaAsc(termo)
+        if (encontrados.isEmpty()) return emptyList()
+        val servidores = servidorRepository.findAllById(encontrados.map { it.servidorId }.toSet()).associateBy { it.id }
+        val agora = relogio.agora()
+        return encontrados.map { it.toResponse(servidores[it.servidorId], agora) }
+    }
+
+    @Transactional(readOnly = true)
     fun consultarPlaca(placaEntrada: String): ResultadoConsultaPlaca {
         val placa = ValidadorPlaca.validarENormalizar(placaEntrada)
         val veiculo = veiculoRepository.findByPlaca(placa)

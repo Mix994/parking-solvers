@@ -43,6 +43,22 @@ class ServidorService(private val repository: ServidorRepository) {
         ).toResponse()
     }
 
+    fun atualizar(id: Long, request: ServidorRequest): ServidorResponse {
+        val servidor = buscarEntidade(id)
+        validar(request)
+        val prontuario = request.prontuario.trim().uppercase()
+        val existente = repository.findByProntuario(prontuario)
+        if (existente != null && existente.id != id) {
+            throw ConflitoException("Já existe um servidor cadastrado com o prontuário $prontuario.")
+        }
+        servidor.nome = request.nome.trim()
+        servidor.prontuario = prontuario
+        servidor.email = request.email.trim().lowercase()
+        servidor.telefone = request.telefone.trim()
+        servidor.setor = request.setor.trim()
+        return repository.save(servidor).toResponse()
+    }
+
     fun alternarAtivo(id: Long): ServidorResponse {
         val servidor = buscarEntidade(id)
         servidor.ativo = !servidor.ativo

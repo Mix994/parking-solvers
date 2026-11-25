@@ -2,6 +2,7 @@ package com.parkingsolvers.smartpark.usuario.controller
 
 import com.parkingsolvers.smartpark.auth.model.UsuarioSessao
 import com.parkingsolvers.smartpark.usuario.dto.AlterarPerfilRequest
+import com.parkingsolvers.smartpark.usuario.dto.AtualizarUsuarioAdminRequest
 import com.parkingsolvers.smartpark.usuario.dto.AtualizarUsuarioRequest
 import com.parkingsolvers.smartpark.usuario.dto.UsuarioRequest
 import com.parkingsolvers.smartpark.usuario.dto.UsuarioResponse
@@ -46,6 +47,14 @@ class UsuarioController(private val service: UsuarioService) {
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasRole('ADMIN')")
     fun cadastrar(@RequestBody request: UsuarioRequest): UsuarioResponse = service.cadastrar(request)
+
+    @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    fun atualizarPorAdmin(
+        @PathVariable id: Long,
+        @RequestBody request: AtualizarUsuarioAdminRequest,
+        @AuthenticationPrincipal sessao: UsuarioSessao
+    ): UsuarioResponse = service.atualizarPorAdmin(id, request, sessao.usuarioId)
 
     @PatchMapping("/{id}/ativo")
     @PreAuthorize("hasRole('ADMIN')")

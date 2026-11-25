@@ -8,6 +8,7 @@ import com.parkingsolvers.smartpark.compartilhado.RegraDeNegocioException
 import com.parkingsolvers.smartpark.compartilhado.ValidadorFormulario
 import com.parkingsolvers.smartpark.servidor.model.Servidor
 import com.parkingsolvers.smartpark.servidor.repository.ServidorRepository
+import com.parkingsolvers.smartpark.usuario.dto.AtualizarUsuarioAdminRequest
 import com.parkingsolvers.smartpark.usuario.dto.AtualizarUsuarioRequest
 import com.parkingsolvers.smartpark.usuario.dto.UsuarioRequest
 import com.parkingsolvers.smartpark.usuario.dto.UsuarioResponse
@@ -92,6 +93,50 @@ class UsuarioService(
         usuario.login = login
         if (request.novaSenha.isNotEmpty()) usuario.senhaHash = passwordEncoder.encode(request.novaSenha)
         return resposta(usuarioRepository.save(usuario))
+    }
+
+    fun atualizarPorAdmin(
+        usuarioId: Long,
+        request: AtualizarUsuarioAdminRequest,
+        usuarioLogadoId: Long
+    ): UsuarioResponse {
+        val usuario = buscarEntidade(usuarioId)
+        val erros = mutableMapOf<String, String>()
+        val nome = request.nome.trim()
+        val login = request.login.trim().lowercase()
+        if (nome.length < 3) erros["nome"] = "Informe o nome completo (mínimo 3 caracteres)."
+        if (login.length < 4 || login.contains(" ")) erros["login"] = "Informe um login ou e-mail válido (mínimo 4 caracteres, sem espaços)."
+        if (request.novaSenha.isNotEmpty()) {
+            if (request.novaSenha.length < 6) erros["novaSenha"] = "A nova senha deve ter no mínimo 6 caracteres."
+            else if (!ValidadorFormulario.senhasCoincidem(request.novaSenha, request.confirmacaoNovaSenha))
+                erros["confirmacaoNovaSenha"] = "As senhas informadas não coincidem."
+        }
+        ValidadorFormulario.lancarSeHouverErros(erros)
+
+        val existente = usuarioRepository.findByLogin(login)
+        if (existente != null && existente.id != usuarioId)
+            throw ConflitoException("O login '$login' já está em uso por outra conta.")
+
+        val perfilAlvo = request.perfil ?: usuario.perfil
+        if (usuarioId == usuarioLogadoId && perfilAlvo != usuario.perfil)
+            throw RegraDeNegocioException("Não é possível alterar o nível de acesso da própria conta em uso.")
+
+        val servidor: Servidor? = if (perfilAlvo == PerfilUsuario.SERVIDOR) {
+            val id = request.servidorId ?: usuario.servidorId
+                ?: throw RegraDeNegocioException("Selecione um servidor para o nível Servidor / Docente.")
+            val s = servidorRepository.findById(id).orElseThrow { RecursoNaoEncontradoException("Servidor", id) }
+            val vinculado = usuarioRepository.findByServidorId(id)
+            if (vinculado != null && vinculado.id != usuarioId)
+                throw ConflitoException("Este servidor já está vinculado a outra conta.")
+            s
+        } else null
+
+        usuario.nome = nome
+        usuario.login = login
+        usuario.perfil = perfilAlvo
+        usuario.servidorId = servidor?.id
+        if (request.novaSenha.isNotEmpty()) usuario.senhaHash = passwordEncoder.encode(request.novaSenha)
+        return usuarioRepository.save(usuario).toResponse(servidor)
     }
 
     fun alternarAtivo(usuarioId: Long, usuarioLogadoId: Long): UsuarioResponse {

@@ -20,6 +20,15 @@ data class AtualizarUsuarioRequest(
     val confirmacaoNovaSenha: String = ""
 )
 
+data class AtualizarUsuarioAdminRequest(
+    val nome: String = "",
+    val login: String = "",
+    val novaSenha: String = "",
+    val confirmacaoNovaSenha: String = "",
+    val perfil: PerfilUsuario? = null,
+    val servidorId: Long? = null
+)
+
 data class AlterarPerfilRequest(
     val perfil: PerfilUsuario,
     val servidorId: Long? = null

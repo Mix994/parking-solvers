@@ -6,4 +6,5 @@ import org.springframework.data.jpa.repository.JpaRepository
 interface VeiculoRepository : JpaRepository<Veiculo, Long> {
     fun findByPlaca(placa: String): Veiculo?
     fun findByServidorId(servidorId: Long): List<Veiculo>
+    fun findTop10ByPlacaContainingIgnoreCaseOrderByPlacaAsc(termo: String): List<Veiculo>
 }
