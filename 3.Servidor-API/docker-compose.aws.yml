@@ -20,7 +20,7 @@ services:
       - "80:80"
       - "443:443"
     environment:
-      API_DOMAIN: ${API_DOMAIN:?Defina API_DOMAIN no .env (ex.: 54-123-45-67.sslip.io)}
+      API_DOMAIN: "${API_DOMAIN:?Defina API_DOMAIN no .env}"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
