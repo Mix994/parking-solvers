@@ -1,0 +1,31 @@
+# Overlay para deploy em EC2 / VPS com HTTPS automático (Let's Encrypt via Caddy).
+# Uso na EC2:
+#   docker compose -f docker-compose.yml -f docker-compose.aws.yml --profile full up -d --build
+
+services:
+  postgres:
+    # Em produção na EC2, não expõe o PostgreSQL para a internet.
+    ports: !reset []
+
+  api:
+    # A API fica acessível apenas pela rede interna do Docker; o Caddy expõe 80/443 com HTTPS.
+    ports: !reset []
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      API_DOMAIN: ${API_DOMAIN:?Defina API_DOMAIN no .env (ex.: 54-123-45-67.sslip.io)}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  caddy_data:
+  caddy_config:

@@ -1,6 +1,7 @@
 services:
   postgres:
     image: postgres:16-alpine
+    restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-smartpark}
       POSTGRES_USER: ${POSTGRES_USER:-smartpark}
@@ -18,6 +19,7 @@ services:
   # Opcional: suba tudo em containers com: docker compose --profile full up -d --build
   api:
     profiles: ["full"]
+    restart: unless-stopped
     build:
       context: .
       dockerfile: Dockerfile
