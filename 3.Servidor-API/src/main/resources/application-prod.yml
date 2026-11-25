@@ -1,0 +1,19 @@
+spring:
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
+
+smartpark:
+  timezone: ${SMARTPARK_TIMEZONE:America/Sao_Paulo}
+  jwt:
+    # Obrigatório em produção (mínimo 32 caracteres). Sem valor padrão inseguro.
+    secret: ${JWT_SECRET}
+    access-minutos: ${JWT_ACCESS_MINUTOS:60}
+    refresh-dias: ${JWT_REFRESH_DIAS:7}
+
+springdoc:
+  api-docs:
+    enabled: ${SWAGGER_ENABLED:false}
+  swagger-ui:
+    enabled: ${SWAGGER_ENABLED:false}

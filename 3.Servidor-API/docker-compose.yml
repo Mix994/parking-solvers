@@ -1,0 +1,42 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-smartpark}
+      POSTGRES_USER: ${POSTGRES_USER:-smartpark}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-smartpark}
+    ports:
+      - "${POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-smartpark} -d ${POSTGRES_DB:-smartpark}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Opcional: suba tudo em containers com: docker compose --profile full up -d --build
+  api:
+    profiles: ["full"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "${PORT:-8080}:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
+      DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-smartpark}
+      DB_USER: ${POSTGRES_USER:-smartpark}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-smartpark}
+      JWT_SECRET: ${JWT_SECRET:-dev-only-secret-change-me-0123456789abcdef}
+      SMARTPARK_TIMEZONE: ${SMARTPARK_TIMEZONE:-America/Sao_Paulo}
+      SWAGGER_ENABLED: ${SWAGGER_ENABLED:-false}
+      ADMIN_INITIAL_NAME: ${ADMIN_INITIAL_NAME:-Administrador}
+      ADMIN_INITIAL_LOGIN: ${ADMIN_INITIAL_LOGIN:-}
+      ADMIN_INITIAL_PASSWORD: ${ADMIN_INITIAL_PASSWORD:-}
+
+volumes:
+  pgdata:

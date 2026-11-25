@@ -1,0 +1,45 @@
+package com.parkingsolvers.smartpark.visitante.dto
+
+import com.parkingsolvers.smartpark.compartilhado.Turno
+import com.parkingsolvers.smartpark.movimentacao.model.TipoVaga
+import com.parkingsolvers.smartpark.visitante.model.Visitante
+import java.time.Instant
+
+data class VisitanteRequest(
+    val nome: String = "",
+    val documento: String = "",
+    val instituicaoOrigem: String = "",
+    val telefone: String = "",
+    val placa: String = "",
+    val modeloVeiculo: String = "",
+    val corVeiculo: String = "",
+    val motivoVisita: String = "",
+    val setorDestino: String = "",
+    val tipoVaga: TipoVaga = TipoVaga.COMUM,
+    val observacao: String = ""
+)
+
+data class VisitanteResponse(
+    val id: Long,
+    val nome: String,
+    val documento: String,
+    val instituicaoOrigem: String,
+    val telefone: String,
+    val placa: String,
+    val modeloVeiculo: String,
+    val corVeiculo: String,
+    val motivoVisita: String,
+    val setorDestino: String,
+    val tipoVaga: TipoVaga,
+    val turno: Turno,
+    val registradoPor: String,
+    val dataHoraEntrada: Instant,
+    val dataHoraSaida: Instant?,
+    val observacao: String,
+    val noCampus: Boolean
+)
+
+fun Visitante.toResponse() = VisitanteResponse(
+    id, nome, documento, instituicaoOrigem, telefone, placa, modeloVeiculo, corVeiculo, motivoVisita,
+    setorDestino, tipoVaga, turno, registradoPor, dataHoraEntrada, dataHoraSaida, observacao, noCampus
+)
