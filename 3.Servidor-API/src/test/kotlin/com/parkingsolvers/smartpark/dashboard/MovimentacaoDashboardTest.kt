@@ -1,5 +1,7 @@
 package com.parkingsolvers.smartpark.dashboard
 
+import com.parkingsolvers.smartpark.auth.model.PerfilUsuario
+import com.parkingsolvers.smartpark.auth.model.UsuarioSessao
 import com.parkingsolvers.smartpark.compartilhado.ConflitoException
 import com.parkingsolvers.smartpark.compartilhado.RegraDeNegocioException
 import com.parkingsolvers.smartpark.compartilhado.RelogioNegocio
@@ -27,6 +29,7 @@ import org.junit.jupiter.api.Test
 import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.`when`
+import org.springframework.security.access.AccessDeniedException
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneId
@@ -54,6 +57,7 @@ class MovimentacaoDashboardTest {
         `when`(movs.save(any(RegistroMovimentacao::class.java))).thenAnswer { it.arguments[0] }
         `when`(servidores.findById(1L)).thenReturn(Optional.of(Servidor(id = 1, nome = "Ana", ativo = true)))
         `when`(veiculos.findByPlaca("ABC1234")).thenReturn(Veiculo(id = 7, servidorId = 1, placa = "ABC1234", modelo = "Gol", cor = "Prata"))
+        `when`(veiculos.findById(7L)).thenReturn(Optional.of(Veiculo(id = 7, servidorId = 1, placa = "ABC1234", modelo = "Gol", cor = "Prata")))
         `when`(veiculos.findAllById(setOf(7L))).thenReturn(listOf(Veiculo(id = 7, servidorId = 1, placa = "ABC1234", modelo = "Gol", cor = "Prata")))
         `when`(servidores.findAllById(setOf(1L))).thenReturn(listOf(Servidor(id = 1, nome = "Ana")))
     }
@@ -133,5 +137,55 @@ class MovimentacaoDashboardTest {
         assertFailsWith<ValidacaoException> { dashboard.atualizarConfiguracao(ConfiguracaoRequest(10, 8, 3)) }
         `when`(config.save(any(ConfiguracaoEstacionamento::class.java))).thenAnswer { it.arguments[0] }
         assertEquals(20, dashboard.atualizarConfiguracao(ConfiguracaoRequest(20, 5, 2)).capacidadeTotal)
+    }
+
+    @Test
+    fun `servidor simula entrada e saida do proprio veiculo e lista minhas abertas`() {
+        val sessaoServidor = UsuarioSessao(10L, "Ana", "SP1", PerfilUsuario.SERVIDOR, servidorId = 1L)
+        val entrada = service.registrarEntrada(EntradaRequest("ABC-1234", TipoVaga.EXCLUSIVA_PCD), sessaoServidor)
+        assertEquals(true, entrada.autorizado)
+        assertEquals(TipoVaga.EXCLUSIVA_PCD, entrada.tipoVaga)
+        assertEquals("Estacionamento simulado pelo servidor", entrada.observacao)
+
+        val reg = RegistroMovimentacao(
+            id = 55L, veiculoId = 7L, placaRegistrada = "ABC1234",
+            autorizado = true, dataHoraEntrada = agora, tipoVaga = TipoVaga.EXCLUSIVA_PCD,
+            observacao = "Estacionamento simulado pelo servidor"
+        )
+        `when`(veiculos.findByServidorId(1L)).thenReturn(listOf(Veiculo(id = 7, servidorId = 1, placa = "ABC1234", modelo = "Gol", cor = "Prata")))
+        `when`(movs.findByVeiculoIdInAndDataHoraSaidaIsNullOrderByDataHoraEntradaDesc(listOf(7L))).thenReturn(listOf(reg))
+
+        val abertas = service.minhasAbertas(sessaoServidor)
+        assertEquals(1, abertas.size)
+        assertEquals(55L, abertas.first().id)
+
+        `when`(movs.findById(55L)).thenReturn(Optional.of(reg))
+        val saida = service.registrarSaida(55L, sessaoServidor)
+        assertEquals(agora, saida.dataHoraSaida)
+    }
+
+    @Test
+    fun `servidor nao pode simular entrada ou saida de veiculo alheio nem burlar autorizacao`() {
+        val sessaoOutro = UsuarioSessao(11L, "Outro", "SP2", PerfilUsuario.SERVIDOR, servidorId = 2L)
+        assertFailsWith<AccessDeniedException> {
+            service.registrarEntrada(EntradaRequest("ABC1234", TipoVaga.COMUM, permitirNaoAutorizado = true), sessaoOutro)
+        }
+        assertFailsWith<AccessDeniedException> {
+            service.registrarEntrada(EntradaRequest("ZZZ9999", TipoVaga.COMUM, permitirNaoAutorizado = true), sessaoOutro)
+        }
+
+        val regOutro = RegistroMovimentacao(id = 77L, veiculoId = 7L, placaRegistrada = "ABC1234", dataHoraEntrada = agora)
+        `when`(movs.findById(77L)).thenReturn(Optional.of(regOutro))
+        assertFailsWith<AccessDeniedException> {
+            service.registrarSaida(77L, sessaoOutro)
+        }
+
+        val sessaoDono = UsuarioSessao(10L, "Ana", "SP1", PerfilUsuario.SERVIDOR, servidorId = 1L)
+        `when`(veiculos.findByPlaca("INA1234")).thenReturn(
+            Veiculo(id = 8, servidorId = 1, placa = "INA1234", modelo = "Uno", cor = "Branco", ativo = false)
+        )
+        assertFailsWith<RegraDeNegocioException> {
+            service.registrarEntrada(EntradaRequest("INA1234", TipoVaga.COMUM, permitirNaoAutorizado = true), sessaoDono)
+        }
     }
 }

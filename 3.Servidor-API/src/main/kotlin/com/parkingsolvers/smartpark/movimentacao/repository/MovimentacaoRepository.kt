@@ -9,6 +9,7 @@ interface MovimentacaoRepository : JpaRepository<RegistroMovimentacao, Long> {
     fun countByTipoVagaAndDataHoraSaidaIsNull(tipoVaga: TipoVaga): Long
     fun findAllByOrderByDataHoraEntradaDesc(): List<RegistroMovimentacao>
     fun findByDataHoraSaidaIsNullOrderByDataHoraEntradaDesc(): List<RegistroMovimentacao>
+    fun findByVeiculoIdInAndDataHoraSaidaIsNullOrderByDataHoraEntradaDesc(veiculoIds: Collection<Long>): List<RegistroMovimentacao>
     fun findFirstByPlacaRegistradaAndDataHoraSaidaIsNull(placa: String): RegistroMovimentacao?
 
     /** Entradas do período mais todos os registros em aberto (para o dashboard). */

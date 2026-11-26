@@ -312,5 +312,64 @@ class ApiIntegracaoTest {
             DashboardOcupacaoResponse::class.java
         ).body
         assertEquals(0, dashFinal?.veiculosNoCampusAgora)
+
+        // 11. Servidor simula estacionamento no próprio veículo e dá baixa na saída
+        val simEntrada = rest.exchange(
+            "/movimentacoes/entrada",
+            HttpMethod.POST,
+            authEntity(servidorToken, EntradaRequest("ABC1D23", TipoVaga.EXCLUSIVA_PCD)),
+            MovimentacaoResponse::class.java
+        )
+        assertEquals(HttpStatus.CREATED, simEntrada.statusCode)
+        val simMov = requireNotNull(simEntrada.body)
+        assertTrue(simMov.emAberto)
+        assertEquals(TipoVaga.EXCLUSIVA_PCD, simMov.tipoVaga)
+
+        // GET /movimentacoes/minhas-abertas retorna para SERVIDOR; /no-estacionamento continua 403
+        val minhasAbertas = rest.exchange(
+            "/movimentacoes/minhas-abertas",
+            HttpMethod.GET,
+            authEntity<Unit>(servidorToken),
+            Array<MovimentacaoResponse>::class.java
+        )
+        assertEquals(HttpStatus.OK, minhasAbertas.statusCode)
+        assertEquals(1, minhasAbertas.body?.size)
+        assertEquals(simMov.id, minhasAbertas.body?.first()?.id)
+
+        assertEquals(
+            HttpStatus.FORBIDDEN,
+            rest.exchange("/movimentacoes/no-estacionamento", HttpMethod.GET, authEntity<Unit>(servidorToken), String::class.java).statusCode
+        )
+
+        // Portaria enxerga a entrada simulada em /movimentacoes/no-estacionamento
+        val portariaAbertas = rest.exchange(
+            "/movimentacoes/no-estacionamento",
+            HttpMethod.GET,
+            authEntity<Unit>(portariaToken),
+            Array<MovimentacaoResponse>::class.java
+        )
+        assertEquals(HttpStatus.OK, portariaAbertas.statusCode)
+        assertTrue(portariaAbertas.body?.any { it.id == simMov.id && it.placa == "ABC1D23" } == true)
+
+        // Servidor não pode simular entrada de placa não pertencente a ele -> 403
+        assertEquals(
+            HttpStatus.FORBIDDEN,
+            rest.exchange(
+                "/movimentacoes/entrada",
+                HttpMethod.POST,
+                authEntity(servidorToken, EntradaRequest("ZZZ9999", TipoVaga.COMUM, permitirNaoAutorizado = true)),
+                String::class.java
+            ).statusCode
+        )
+
+        // Servidor registra saída da simulação
+        val simSaida = rest.exchange(
+            "/movimentacoes/${simMov.id}/saida",
+            HttpMethod.POST,
+            authEntity<Unit>(servidorToken),
+            MovimentacaoResponse::class.java
+        )
+        assertEquals(HttpStatus.OK, simSaida.statusCode)
+        assertNotNull(simSaida.body?.dataHoraSaida)
     }
 }
