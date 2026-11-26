@@ -1,19 +1,25 @@
-# Overlay para deploy em EC2 / VPS com HTTPS automático (Let's Encrypt via Caddy).
-# Uso na EC2:
-#   docker compose -f docker-compose.yml -f docker-compose.aws.yml --profile full up -d --build
+# Overlay para deploy em EC2 (t3.small) / VPS com imagem pré-construída no GHCR e HTTPS via Caddy.
+# Uso na EC2 (sem build local):
+#   docker compose -f docker-compose.yml -f docker-compose.aws.yml --profile full pull api
+#   docker compose -f docker-compose.yml -f docker-compose.aws.yml --profile full up -d --no-build --wait
 
 services:
   postgres:
     # Em produção na EC2, não expõe o PostgreSQL para a internet.
     ports: !reset []
+    mem_limit: 384m
 
   api:
+    # Imagem publicada pelo GitHub Actions; evita compilação local na t3.small.
+    image: ${API_IMAGE:-ghcr.io/mix994/smartpark-api:latest}
     # A API fica acessível apenas pela rede interna do Docker; o Caddy expõe 80/443 com HTTPS.
     ports: !reset []
+    mem_limit: 896m
 
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped
+    mem_limit: 128m
     depends_on:
       - api
     ports:
