@@ -7,6 +7,8 @@ import com.parkingsolvers.smartpark.dashboard.dto.ConfiguracaoResponse
 import com.parkingsolvers.smartpark.dashboard.dto.DashboardOcupacaoResponse
 import com.parkingsolvers.smartpark.dashboard.model.ConfiguracaoEstacionamento
 import com.parkingsolvers.smartpark.dashboard.repository.ConfiguracaoEstacionamentoRepository
+import com.parkingsolvers.smartpark.eventos.PublicadorEventosTempoReal
+import com.parkingsolvers.smartpark.eventos.TipoEventoTempoReal
 import com.parkingsolvers.smartpark.movimentacao.repository.MovimentacaoRepository
 import com.parkingsolvers.smartpark.servidor.repository.ServidorRepository
 import com.parkingsolvers.smartpark.veiculo.repository.VeiculoRepository
@@ -22,7 +24,8 @@ class DashboardService(
     private val movimentacaoRepository: MovimentacaoRepository,
     private val visitanteRepository: VisitanteRepository,
     private val configuracaoRepository: ConfiguracaoEstacionamentoRepository,
-    private val relogio: RelogioNegocio
+    private val relogio: RelogioNegocio,
+    private val eventos: PublicadorEventosTempoReal = PublicadorEventosTempoReal.NOOP
 ) {
     private val calculadora = CalculadoraOcupacao(relogio.zone)
 
@@ -63,7 +66,9 @@ class DashboardService(
         atual.capacidadeTotal = r.capacidadeTotal
         atual.capacidadeExclusivas = r.capacidadeExclusivas
         atual.capacidadeCarregamentoEletrico = r.capacidadeCarregamentoEletrico
-        return configuracaoRepository.save(atual).toResponse()
+        return configuracaoRepository.save(atual).toResponse().also {
+            eventos.publicar(tipo = TipoEventoTempoReal.CONFIGURACAO_ATUALIZADA)
+        }
     }
 
     private fun ConfiguracaoEstacionamento.toResponse() =

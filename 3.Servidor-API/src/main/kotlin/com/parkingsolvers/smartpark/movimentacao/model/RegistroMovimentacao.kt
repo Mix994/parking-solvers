@@ -11,12 +11,16 @@ import jakarta.persistence.Id
 import jakarta.persistence.Table
 import java.time.Instant
 
-enum class TipoVaga(val exclusiva: Boolean, val carregamentoEletrico: Boolean = false) {
-    COMUM(false),
-    CARREGAMENTO_ELETRICO(false, true),
-    EXCLUSIVA_PCD(true),
-    EXCLUSIVA_IDOSO(true),
-    EXCLUSIVA_OFICIAL(true)
+enum class TipoVaga(
+    val exclusiva: Boolean,
+    val carregamentoEletrico: Boolean = false,
+    val label: String
+) {
+    COMUM(false, label = "Vaga Comum"),
+    CARREGAMENTO_ELETRICO(false, carregamentoEletrico = true, label = "Carregamento Elétrico"),
+    EXCLUSIVA_PCD(true, label = "Exclusiva PCD"),
+    EXCLUSIVA_IDOSO(true, label = "Exclusiva Idoso"),
+    EXCLUSIVA_OFICIAL(true, label = "Viatura / Oficial")
 }
 
 @Entity

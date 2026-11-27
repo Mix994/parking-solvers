@@ -108,4 +108,5 @@ jobs:
             echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
             docker compose -f docker-compose.yml -f docker-compose.aws.yml --profile full pull api
             docker compose -f docker-compose.yml -f docker-compose.aws.yml --profile full up -d --no-build --wait --remove-orphans
+            docker compose -f docker-compose.yml -f docker-compose.aws.yml --profile full exec -T caddy caddy reload --config /etc/caddy/Caddyfile || true
             docker image prune -f

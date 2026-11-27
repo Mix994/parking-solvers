@@ -2,6 +2,7 @@ package com.parkingsolvers.smartpark.auth.security
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.parkingsolvers.smartpark.compartilhado.ErroResponse
+import jakarta.servlet.DispatcherType
 import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
@@ -52,14 +53,15 @@ class SecurityConfig {
         http.csrf { it.disable() }
             .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
             .authorizeHttpRequests {
-                it.requestMatchers(
-                    "/auth/login",
-                    "/auth/refresh",
-                    "/actuator/health",
-                    "/swagger-ui/**",
-                    "/swagger-ui.html",
-                    "/v3/api-docs/**"
-                ).permitAll()
+                it.dispatcherTypeMatchers(DispatcherType.ASYNC).permitAll()
+                    .requestMatchers(
+                        "/auth/login",
+                        "/auth/refresh",
+                        "/actuator/health",
+                        "/swagger-ui/**",
+                        "/swagger-ui.html",
+                        "/v3/api-docs/**"
+                    ).permitAll()
                     .anyRequest().authenticated()
             }
             .exceptionHandling {

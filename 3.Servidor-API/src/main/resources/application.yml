@@ -18,6 +18,9 @@ spring:
     enabled: true
   jackson:
     default-property-inclusion: non_null
+  mvc:
+    async:
+      request-timeout: -1
 
 management:
   endpoints:

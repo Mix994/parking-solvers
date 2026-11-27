@@ -8,6 +8,8 @@ import com.parkingsolvers.smartpark.compartilhado.RegraDeNegocioException
 import com.parkingsolvers.smartpark.compartilhado.RelogioNegocio
 import com.parkingsolvers.smartpark.compartilhado.ValidadorPlaca
 import com.parkingsolvers.smartpark.dashboard.repository.ConfiguracaoEstacionamentoRepository
+import com.parkingsolvers.smartpark.eventos.PublicadorEventosTempoReal
+import com.parkingsolvers.smartpark.eventos.TipoEventoTempoReal
 import com.parkingsolvers.smartpark.movimentacao.dto.EntradaRequest
 import com.parkingsolvers.smartpark.movimentacao.dto.MovimentacaoResponse
 import com.parkingsolvers.smartpark.movimentacao.dto.toResponse
@@ -31,7 +33,8 @@ class MovimentacaoService(
     private val visitanteRepository: VisitanteRepository,
     private val configuracaoRepository: ConfiguracaoEstacionamentoRepository,
     private val veiculoService: VeiculoService,
-    private val relogio: RelogioNegocio
+    private val relogio: RelogioNegocio,
+    private val eventos: PublicadorEventosTempoReal = PublicadorEventosTempoReal.NOOP
 ) {
 
     @Transactional(readOnly = true)
@@ -91,7 +94,19 @@ class MovimentacaoService(
                 observacao = observacaoFinal
             )
         )
-        return mapear(listOf(salvo)).first()
+        return mapear(listOf(salvo)).first().also { resp ->
+            eventos.publicar(
+                tipo = TipoEventoTempoReal.MOVIMENTACAO_ENTRADA,
+                placa = resp.placa,
+                modeloCor = resp.modeloCor,
+                responsavel = resp.servidorNome,
+                tipoVaga = resp.tipoVaga.name,
+                tipoVagaLabel = resp.tipoVaga.label,
+                origemUsuarioId = sessao?.usuarioId,
+                origemPerfil = sessao?.perfil?.name,
+                simulacaoServidor = ehServidor
+            )
+        }
     }
 
     fun registrarSaida(id: Long, sessao: UsuarioSessao? = null): MovimentacaoResponse {
@@ -104,7 +119,19 @@ class MovimentacaoService(
         }
         if (registro.dataHoraSaida != null) throw ConflitoException("Saída já foi registrada para esta movimentação.")
         registro.dataHoraSaida = relogio.agora()
-        return mapear(listOf(movimentacaoRepository.save(registro))).first()
+        return mapear(listOf(movimentacaoRepository.save(registro))).first().also { resp ->
+            eventos.publicar(
+                tipo = TipoEventoTempoReal.MOVIMENTACAO_SAIDA,
+                placa = resp.placa,
+                modeloCor = resp.modeloCor,
+                responsavel = resp.servidorNome,
+                tipoVaga = resp.tipoVaga.name,
+                tipoVagaLabel = resp.tipoVaga.label,
+                origemUsuarioId = sessao?.usuarioId,
+                origemPerfil = sessao?.perfil?.name,
+                simulacaoServidor = sessao?.perfil == PerfilUsuario.SERVIDOR
+            )
+        }
     }
 
     private fun mapear(registros: List<RegistroMovimentacao>): List<MovimentacaoResponse> {

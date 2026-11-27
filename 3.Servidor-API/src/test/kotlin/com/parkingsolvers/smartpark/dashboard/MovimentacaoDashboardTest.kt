@@ -13,6 +13,8 @@ import com.parkingsolvers.smartpark.dashboard.repository.ConfiguracaoEstacioname
 import com.parkingsolvers.smartpark.dashboard.service.CalculadoraOcupacao
 import com.parkingsolvers.smartpark.dashboard.service.DashboardService
 import com.parkingsolvers.smartpark.dashboard.service.PeriodoDashboard
+import com.parkingsolvers.smartpark.eventos.PublicadorEventosTempoReal
+import com.parkingsolvers.smartpark.eventos.TipoEventoTempoReal
 import com.parkingsolvers.smartpark.movimentacao.dto.EntradaRequest
 import com.parkingsolvers.smartpark.movimentacao.model.RegistroMovimentacao
 import com.parkingsolvers.smartpark.movimentacao.model.TipoVaga
@@ -187,5 +189,40 @@ class MovimentacaoDashboardTest {
         assertFailsWith<RegraDeNegocioException> {
             service.registrarEntrada(EntradaRequest("INA1234", TipoVaga.COMUM, permitirNaoAutorizado = true), sessaoDono)
         }
+    }
+
+    @Test
+    fun `publica eventos em tempo real ao simular entrada e registrar saida`() {
+        val publicados = mutableListOf<Triple<TipoEventoTempoReal, String?, Boolean>>()
+        val publicador = object : PublicadorEventosTempoReal {
+            override fun publicar(
+                tipo: TipoEventoTempoReal,
+                placa: String?,
+                modeloCor: String?,
+                responsavel: String?,
+                tipoVaga: String?,
+                tipoVagaLabel: String?,
+                origemUsuarioId: Long?,
+                origemPerfil: String?,
+                simulacaoServidor: Boolean
+            ) {
+                publicados.add(Triple(tipo, placa, simulacaoServidor))
+            }
+        }
+        val srvComEventos = MovimentacaoService(movs, veiculos, servidores, visitantes, config, veiculoService, relogio, publicador)
+        val sessaoServidor = UsuarioSessao(10L, "Ana", "SP1", PerfilUsuario.SERVIDOR, servidorId = 1L)
+
+        srvComEventos.registrarEntrada(EntradaRequest("ABC1234", TipoVaga.EXCLUSIVA_IDOSO), sessaoServidor)
+        val reg = RegistroMovimentacao(id = 88L, veiculoId = 7L, placaRegistrada = "ABC1234", dataHoraEntrada = agora)
+        `when`(movs.findById(88L)).thenReturn(Optional.of(reg))
+        srvComEventos.registrarSaida(88L, sessaoServidor)
+
+        assertEquals(
+            listOf<Triple<TipoEventoTempoReal, String?, Boolean>>(
+                Triple(TipoEventoTempoReal.MOVIMENTACAO_ENTRADA, "ABC1234", true),
+                Triple(TipoEventoTempoReal.MOVIMENTACAO_SAIDA, "ABC1234", true)
+            ),
+            publicados
+        )
     }
 }

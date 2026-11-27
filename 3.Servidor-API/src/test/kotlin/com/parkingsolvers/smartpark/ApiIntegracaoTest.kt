@@ -27,6 +27,7 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.web.client.TestRestTemplate
+import org.springframework.boot.test.web.server.LocalServerPort
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection
 import org.springframework.http.HttpEntity
 import org.springframework.http.HttpHeaders
@@ -37,6 +38,16 @@ import org.springframework.test.context.ActiveProfiles
 import org.testcontainers.containers.PostgreSQLContainer
 import org.testcontainers.junit.jupiter.Container
 import org.testcontainers.junit.jupiter.Testcontainers
+import java.io.BufferedReader
+import java.io.InputStreamReader
+import java.net.URI
+import java.net.http.HttpClient
+import java.net.http.HttpRequest
+import java.net.http.HttpResponse
+import java.nio.charset.StandardCharsets
+import java.time.Duration
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
@@ -59,6 +70,9 @@ class ApiIntegracaoTest {
 
     @Autowired
     lateinit var rest: TestRestTemplate
+
+    @LocalServerPort
+    var port: Int = 0
 
     private fun <T> authEntity(token: String, body: T? = null): HttpEntity<T> {
         val headers = HttpHeaders()
@@ -371,5 +385,61 @@ class ApiIntegracaoTest {
         )
         assertEquals(HttpStatus.OK, simSaida.statusCode)
         assertNotNull(simSaida.body?.dataHoraSaida)
+
+        // 12. Stream SSE em tempo real: exige JWT e entrega evento imediato ao simular nova entrada
+        val sseSemAuth = rest.getForEntity("/eventos/stream", String::class.java)
+        assertEquals(HttpStatus.UNAUTHORIZED, sseSemAuth.statusCode)
+
+        val httpClient = HttpClient.newBuilder()
+            .connectTimeout(Duration.ofSeconds(5))
+            .build()
+        val reqSse = HttpRequest.newBuilder()
+            .uri(URI.create("http://localhost:$port/eventos/stream"))
+            .header("Authorization", "Bearer $portariaToken")
+            .header("Accept", "text/event-stream")
+            .GET()
+            .build()
+        val sseResp = httpClient.send(reqSse, HttpResponse.BodyHandlers.ofInputStream())
+        assertEquals(200, sseResp.statusCode())
+
+        val executor = Executors.newSingleThreadExecutor()
+        try {
+            val reader = BufferedReader(InputStreamReader(sseResp.body(), StandardCharsets.UTF_8))
+            val conectadoOk = executor.submit<Boolean> {
+                while (true) {
+                    val linha = reader.readLine() ?: return@submit false
+                    if (linha.startsWith("event:conectado")) return@submit true
+                }
+                @Suppress("UNREACHABLE_CODE")
+                false
+            }.get(5, TimeUnit.SECONDS)
+            assertTrue(conectadoOk, "Stream SSE não enviou evento inicial conectado")
+
+            val simEntrada2 = rest.exchange(
+                "/movimentacoes/entrada",
+                HttpMethod.POST,
+                authEntity(servidorToken, EntradaRequest("ABC1D23", TipoVaga.EXCLUSIVA_IDOSO)),
+                MovimentacaoResponse::class.java
+            )
+            assertEquals(HttpStatus.CREATED, simEntrada2.statusCode)
+
+            val linhasRecebidas = executor.submit<String> {
+                val sb = StringBuilder()
+                while (true) {
+                    val linha = reader.readLine() ?: break
+                    sb.append(linha).append('\n')
+                    if (linha.contains("MOVIMENTACAO_ENTRADA") && linha.contains("ABC1D23")) {
+                        break
+                    }
+                }
+                sb.toString()
+            }.get(5, TimeUnit.SECONDS)
+            assertTrue(linhasRecebidas.contains("event:atualizacao"), "Esperado evento atualizacao em:\n$linhasRecebidas")
+            assertTrue(linhasRecebidas.contains("MOVIMENTACAO_ENTRADA"))
+            assertTrue(linhasRecebidas.contains("ABC1D23"))
+        } finally {
+            runCatching { sseResp.body().close() }
+            executor.shutdownNow()
+        }
     }
 }

@@ -8,6 +8,8 @@ import com.parkingsolvers.smartpark.compartilhado.RecursoNaoEncontradoException
 import com.parkingsolvers.smartpark.compartilhado.RelogioNegocio
 import com.parkingsolvers.smartpark.compartilhado.ValidadorFormulario
 import com.parkingsolvers.smartpark.compartilhado.ValidadorPlaca
+import com.parkingsolvers.smartpark.eventos.PublicadorEventosTempoReal
+import com.parkingsolvers.smartpark.eventos.TipoEventoTempoReal
 import com.parkingsolvers.smartpark.servidor.model.Servidor
 import com.parkingsolvers.smartpark.servidor.repository.ServidorRepository
 import com.parkingsolvers.smartpark.veiculo.dto.ResultadoConsultaPlaca
@@ -29,7 +31,8 @@ import java.time.Instant
 class VeiculoService(
     private val veiculoRepository: VeiculoRepository,
     private val servidorRepository: ServidorRepository,
-    private val relogio: RelogioNegocio
+    private val relogio: RelogioNegocio,
+    private val eventos: PublicadorEventosTempoReal = PublicadorEventosTempoReal.NOOP
 ) {
 
     @Transactional(readOnly = true)
@@ -79,7 +82,14 @@ class VeiculoService(
                 validadeFim = if (temporario) request.validadeFim else null
             )
         )
-        return salvo.toResponse(servidor, relogio.agora())
+        return salvo.toResponse(servidor, relogio.agora()).also { resp ->
+            eventos.publicar(
+                tipo = TipoEventoTempoReal.CADASTRO_ATUALIZADO,
+                placa = resp.placa,
+                origemUsuarioId = sessao.usuarioId,
+                origemPerfil = sessao.perfil.name
+            )
+        }
     }
 
     fun alternarAtivo(id: Long, sessao: UsuarioSessao): VeiculoResponse {
@@ -87,7 +97,14 @@ class VeiculoService(
         exigirAcessoAoServidor(sessao, veiculo.servidorId)
         veiculo.ativo = !veiculo.ativo
         val servidor = servidorRepository.findById(veiculo.servidorId).orElse(null)
-        return veiculoRepository.save(veiculo).toResponse(servidor, relogio.agora())
+        return veiculoRepository.save(veiculo).toResponse(servidor, relogio.agora()).also { resp ->
+            eventos.publicar(
+                tipo = TipoEventoTempoReal.CADASTRO_ATUALIZADO,
+                placa = resp.placa,
+                origemUsuarioId = sessao.usuarioId,
+                origemPerfil = sessao.perfil.name
+            )
+        }
     }
 
     @Transactional(readOnly = true)

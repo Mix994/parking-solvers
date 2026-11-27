@@ -29,8 +29,9 @@ class VisitanteController(private val service: VisitanteService) {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     fun registrarEntrada(@RequestBody request: VisitanteRequest, @AuthenticationPrincipal sessao: UsuarioSessao): VisitanteResponse =
-        service.registrarEntrada(request, sessao.nome)
+        service.registrarEntrada(request, sessao.nome, sessao)
 
     @PostMapping("/{id}/saida")
-    fun registrarSaida(@PathVariable id: Long): VisitanteResponse = service.registrarSaida(id)
+    fun registrarSaida(@PathVariable id: Long, @AuthenticationPrincipal sessao: UsuarioSessao): VisitanteResponse =
+        service.registrarSaida(id, sessao)
 }

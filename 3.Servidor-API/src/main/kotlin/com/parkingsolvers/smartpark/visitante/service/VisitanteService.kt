@@ -1,11 +1,14 @@
 package com.parkingsolvers.smartpark.visitante.service
 
+import com.parkingsolvers.smartpark.auth.model.UsuarioSessao
 import com.parkingsolvers.smartpark.compartilhado.ConflitoException
 import com.parkingsolvers.smartpark.compartilhado.RecursoNaoEncontradoException
 import com.parkingsolvers.smartpark.compartilhado.RelogioNegocio
 import com.parkingsolvers.smartpark.compartilhado.ValidadorFormulario
 import com.parkingsolvers.smartpark.compartilhado.ValidadorPlaca
 import com.parkingsolvers.smartpark.dashboard.repository.ConfiguracaoEstacionamentoRepository
+import com.parkingsolvers.smartpark.eventos.PublicadorEventosTempoReal
+import com.parkingsolvers.smartpark.eventos.TipoEventoTempoReal
 import com.parkingsolvers.smartpark.movimentacao.model.TipoVaga
 import com.parkingsolvers.smartpark.movimentacao.repository.MovimentacaoRepository
 import com.parkingsolvers.smartpark.visitante.dto.VisitanteRequest
@@ -22,7 +25,8 @@ class VisitanteService(
     private val visitanteRepository: VisitanteRepository,
     private val movimentacaoRepository: MovimentacaoRepository,
     private val configuracaoRepository: ConfiguracaoEstacionamentoRepository,
-    private val relogio: RelogioNegocio
+    private val relogio: RelogioNegocio,
+    private val eventos: PublicadorEventosTempoReal = PublicadorEventosTempoReal.NOOP
 ) {
 
     @Transactional(readOnly = true)
@@ -32,7 +36,11 @@ class VisitanteService(
     fun noCampus(): List<VisitanteResponse> =
         visitanteRepository.findByDataHoraSaidaIsNullOrderByDataHoraEntradaDesc().map { it.toResponse() }
 
-    fun registrarEntrada(request: VisitanteRequest, registradoPor: String): VisitanteResponse {
+    fun registrarEntrada(
+        request: VisitanteRequest,
+        registradoPor: String,
+        sessao: UsuarioSessao? = null
+    ): VisitanteResponse {
         validarCampos(request)
         val placa = ValidadorPlaca.validarENormalizar(request.placa)
 
@@ -62,14 +70,36 @@ class VisitanteService(
                 dataHoraEntrada = agora, observacao = request.observacao.trim()
             )
         )
-        return salvo.toResponse()
+        return salvo.toResponse().also { resp ->
+            eventos.publicar(
+                tipo = TipoEventoTempoReal.VISITANTE_ENTRADA,
+                placa = resp.placa,
+                modeloCor = "${resp.modeloVeiculo} • ${resp.corVeiculo}",
+                responsavel = resp.nome,
+                tipoVaga = resp.tipoVaga.name,
+                tipoVagaLabel = resp.tipoVaga.label,
+                origemUsuarioId = sessao?.usuarioId,
+                origemPerfil = sessao?.perfil?.name
+            )
+        }
     }
 
-    fun registrarSaida(id: Long): VisitanteResponse {
+    fun registrarSaida(id: Long, sessao: UsuarioSessao? = null): VisitanteResponse {
         val visitante = visitanteRepository.findById(id).orElseThrow { RecursoNaoEncontradoException("Visitante", id) }
         if (!visitante.noCampus) throw ConflitoException("A saída deste visitante já foi registrada.")
         visitante.dataHoraSaida = relogio.agora()
-        return visitanteRepository.save(visitante).toResponse()
+        return visitanteRepository.save(visitante).toResponse().also { resp ->
+            eventos.publicar(
+                tipo = TipoEventoTempoReal.VISITANTE_SAIDA,
+                placa = resp.placa,
+                modeloCor = "${resp.modeloVeiculo} • ${resp.corVeiculo}",
+                responsavel = resp.nome,
+                tipoVaga = resp.tipoVaga.name,
+                tipoVagaLabel = resp.tipoVaga.label,
+                origemUsuarioId = sessao?.usuarioId,
+                origemPerfil = sessao?.perfil?.name
+            )
+        }
     }
 
     private fun validarCampos(r: VisitanteRequest) {
